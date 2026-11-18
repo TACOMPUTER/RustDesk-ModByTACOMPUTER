@@ -14,6 +14,7 @@ enum PeerTabIndex {
   recent,
   fav,
   lan,
+  local,
   ab,
   group,
 }
@@ -22,11 +23,12 @@ class PeerTabModel with ChangeNotifier {
   WeakReference<FFI> parent;
   int get currentTab => _currentTab;
   int _currentTab = 0; // index in tabNames
-  static const int maxTabCount = 5;
+  static const int maxTabCount = 6;
   static const List<String> tabNames = [
     'Recent sessions',
     'Favorites',
     'Discovered',
+    'Local Address Book',
     'Address book',
     'Accessible devices',
   ];
@@ -34,6 +36,7 @@ class PeerTabModel with ChangeNotifier {
     Icons.access_time_filled,
     Icons.star,
     Icons.explore,
+    Icons.contacts,
     IconFont.addressBook,
     IconFont.deviceGroupFill,
   ];
@@ -41,6 +44,7 @@ class PeerTabModel with ChangeNotifier {
     true,
     true,
     !isWeb && bind.mainGetLocalOption(key: "disable-discovery-panel") != "Y",
+    true,
     !(bind.isDisableAb() || bind.isDisableAccount()),
     !(bind.isDisableGroupPanel() || bind.isDisableAccount()),
   ]);

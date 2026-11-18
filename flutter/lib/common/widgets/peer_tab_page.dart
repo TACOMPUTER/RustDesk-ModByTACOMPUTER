@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/common/widgets/address_book.dart';
+import 'package:flutter_hbb/common/widgets/local_address_book.dart';
 import 'package:flutter_hbb/common/widgets/dialog.dart';
 import 'package:flutter_hbb/common/widgets/my_group.dart';
 import 'package:flutter_hbb/common/widgets/peers_view.dart';
@@ -54,6 +55,7 @@ class _PeerTabPageState extends State<PeerTabPage>
     _TabEntry(DiscoveredPeersView(
       menuPadding: _menuPadding(),
     )),
+    _TabEntry(const LocalAddressBook()),
     _TabEntry(
         AddressBook(
           menuPadding: _menuPadding(),

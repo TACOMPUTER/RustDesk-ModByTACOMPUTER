@@ -926,6 +926,8 @@ abstract class BasePeerCard extends StatelessWidget {
               await bind.mainRemoveDiscovered(id: id);
               bind.mainLoadLanPeers();
               break;
+            case PeerTabIndex.local:
+              break;
             case PeerTabIndex.ab:
               await gFFI.abModel.deletePeers([id]);
               break;
