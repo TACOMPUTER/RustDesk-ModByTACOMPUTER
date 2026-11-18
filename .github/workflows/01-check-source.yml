@@ -1,0 +1,118 @@
+
+name: 01 - Check RustDesk Source ZIP
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-source:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check ZIP and extract
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ZIP="rustdesk-1.5.3_ModByTACOMPUTER.zip"
+
+          if [ ! -f "$ZIP" ]; then
+            echo "::error::ZIP not found: $ZIP"
+            exit 1
+          fi
+
+          python3 - <<'PY'
+          import pathlib
+          import zipfile
+
+          archive = pathlib.Path(
+              "rustdesk-1.5.3_ModByTACOMPUTER.zip"
+          )
+          destination = pathlib.Path("extracted")
+          destination.mkdir(exist_ok=True)
+
+          with zipfile.ZipFile(archive) as z:
+              for entry in z.infolist():
+                  path = pathlib.PurePosixPath(
+                      entry.filename.replace("\\", "/")
+                  )
+                  if (path.is_absolute()
+                      or ".." in path.parts
+                      or path.parts[0] == ""):
+                      raise ValueError(
+                          f"Unsafe ZIP path: {entry.filename}"
+                      )
+                  mode = (entry.external_attr >> 16) & 0o170000
+                  if mode == 0o120000:
+                      raise ValueError(
+                          f"Symlink in ZIP: {entry.filename}"
+                      )
+              z.extractall(destination)
+          PY
+
+      - name: Inspect RustDesk source
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "=== SOURCE ROOT ==="
+          find extracted -name Cargo.toml -type f | head -20
+
+          ROOT=$(find extracted -name build.py -type f \
+            -not -path '*/target/*' \
+            -printf '%h\n' | head -1)
+
+          if [ -z "$ROOT" ]; then
+            echo "::error::build.py not found"
+            exit 1
+          fi
+
+          echo "SOURCE_ROOT=$ROOT"
+
+          echo "=== REQUIRED FILES ==="
+          for item in \
+            Cargo.toml \
+            Cargo.lock \
+            build.py \
+            flutter \
+            .github/workflows/flutter-build.yml
+          do
+            if [ -e "$ROOT/$item" ]; then
+              echo "OK: $item"
+            else
+              echo "MISSING: $item"
+            fi
+          done
+
+          echo "=== SUBMODULES ==="
+          if [ -f "$ROOT/.gitmodules" ]; then
+            cat "$ROOT/.gitmodules"
+          else
+            echo "No .gitmodules found"
+          fi
+
+          echo "=== WORKFLOW FILES ==="
+          find "$ROOT/.github/workflows" \
+            -maxdepth 1 -type f 2>/dev/null \
+            | sort || true
+
+          echo "=== ARCHIVE SIZE ==="
+          du -h \
+            rustdesk-1.5.3_ModByTACOMPUTER.zip
+
+      - name: Upload source inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RustDesk-Source-Inspection
+          path: |
+            extracted/**/.gitmodules
+            extracted/**/Cargo.toml
+            extracted/**/vcpkg.json
+          if-no-files-found: warn
