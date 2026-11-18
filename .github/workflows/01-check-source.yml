@@ -102,9 +102,47 @@ jobs:
             -maxdepth 1 -type f 2>/dev/null \
             | sort || true
 
+          
           echo "=== ARCHIVE SIZE ==="
           du -h \
             rustdesk-1.5.3_ModByTACOMPUTER.zip
+
+      # KIEM TRA SUBMODULE VA BRIDGE
+      - name: Check RustDesk submodule content
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ROOT="extracted/rustdesk-1.5.3"
+
+          echo "=== HBB COMMON ==="
+          if [ -d "$ROOT/libs/hbb_common" ]; then
+            echo "Directory exists"
+            find "$ROOT/libs/hbb_common" \
+              -maxdepth 2 -type f | head -30
+          else
+            echo "MISSING: libs/hbb_common"
+          fi
+
+          echo "=== HBB CARGO ==="
+          if [ -f "$ROOT/libs/hbb_common/Cargo.toml" ]; then
+            echo "OK: hbb_common/Cargo.toml"
+          else
+            echo "MISSING: hbb_common/Cargo.toml"
+          fi
+
+          echo "=== BRIDGE FILES ==="
+          find "$ROOT" -maxdepth 4 \
+            \( -iname '*bridge*' \
+            -o -iname '*flutter_rust_bridge*' \) \
+            | head -40
+
+          echo "=== FLUTTER PATCHES ==="
+          if [ -d "$ROOT/.github/patches" ]; then
+            ls -la "$ROOT/.github/patches"
+          else
+            echo "MISSING: .github/patches"
+          fi
 
       - name: Upload source inspection
         if: always()
