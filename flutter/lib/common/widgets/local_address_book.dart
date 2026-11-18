@@ -145,7 +145,7 @@ class _LocalAddressBookState extends State<LocalAddressBook> {
             final e = visible[i];
             return ListTile(dense: true, leading: const Icon(Icons.computer),
               title: Text(e.name.isEmpty ? e.address : e.name), subtitle: Text(e.address),
-              trailing: Wrap(mainAxisSize: MainAxisSize.min, children: [
+              trailing: Wrap(children: [
                 TextButton(onPressed: () => _connect(e), child: const Text('Connect')),
                 PopupMenuButton<String>(onSelected: (v) async {
                   if (v == 'edit') await _edit(e);
