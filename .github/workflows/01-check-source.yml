@@ -107,6 +107,25 @@ jobs:
           du -h \
             rustdesk-1.5.3_ModByTACOMPUTER.zip
 
+
+      - name: Identify RustDesk submodule commit
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "=== OFFICIAL RUSTDESK TAGS ==="
+          git ls-remote --tags \
+            https://github.com/rustdesk/rustdesk.git \
+            '*1.5.3*'
+
+          echo "=== SOURCE VERSION ==="
+          grep -nE '^version|^name' \
+            extracted/rustdesk-1.5.3/Cargo.toml \
+            | head -20
+
+          echo "=== HBB DIRECTORY ==="
+          ls -la extracted/rustdesk-1.5.3/libs/hbb_common
+
       # KIEM TRA SUBMODULE VA BRIDGE
       - name: Check RustDesk submodule content
         shell: bash
