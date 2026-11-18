@@ -40,7 +40,7 @@ jobs:
     - generate-bridge
     runs-on: ${{ matrix.job.os }}
     strategy:
-      fail-fast: 'false'
+      fail-fast: false
       matrix:
         job:
         - target: x86_64-pc-windows-msvc
@@ -127,7 +127,7 @@ jobs:
       with:
         vcpkgDirectory: C:\vcpkg
         vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
-        doNotCache: 'false'
+        doNotCache: false
     - name: Install vcpkg dependencies
       env:
         VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.job.vcpkg-triplet }}
@@ -162,7 +162,7 @@ jobs:
         \ do not match, ignore the file.\"\n  } else {\n      Write-Output \"printer_driver_adapter.dll, checksums do not match, ignore\
         \ the file.\"\n  }\n} catch {\n    Write-Host \"Ingore the printer driver error.\"\n}\n"
     - name: find Runner.res
-      continue-on-error: 'true'
+      continue-on-error: true
       shell: bash
       run: "runner_res=$(find . -name \"Runner.res\");\nif [ \"$runner_res\" == \"\" ]; then\n  echo \"Runner.res: not found\";\nelse\n\
         \  echo \"Runner.res: $runner_res\";\n  cp $runner_res ./libs/portable/Runner.res;\n  echo \"list ./libs/portable/Runner.res\"\
@@ -209,7 +209,7 @@ jobs:
     name: build rustdesk linux ${{ matrix.job.target }}
     runs-on: ${{ matrix.job.on }}
     strategy:
-      fail-fast: 'false'
+      fail-fast: false
       matrix:
         job:
         - arch: x86_64
@@ -286,7 +286,7 @@ jobs:
       with:
         vcpkgDirectory: /opt/artifacts/vcpkg
         vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
-        doNotCache: 'false'
+        doNotCache: false
     - name: Install vcpkg dependencies
       if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
       run: "sudo apt install -y libva-dev && apt show libva-dev\nif ! $VCPKG_ROOT/vcpkg \\\n  install \\\n  --triplet ${{ matrix.job.vcpkg-triplet\
