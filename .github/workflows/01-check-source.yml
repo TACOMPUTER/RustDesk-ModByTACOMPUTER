@@ -126,6 +126,42 @@ jobs:
           echo "=== HBB DIRECTORY ==="
           ls -la extracted/rustdesk-1.5.3/libs/hbb_common
 
+
+      - name: Restore RustDesk 1.5.3 submodule
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ROOT="$GITHUB_WORKSPACE/extracted/rustdesk-1.5.3"
+          TAG_COMMIT="95cca3f661f635b3cc85c04935fe8d96d8f432ef"
+
+          echo "=== CLONE OFFICIAL RUSTDESK ==="
+          git clone --no-checkout \
+            https://github.com/rustdesk/rustdesk.git \
+            /tmp/rustdesk-official
+
+          cd /tmp/rustdesk-official
+          git checkout "$TAG_COMMIT"
+
+          echo "=== IDENTIFY HBB COMMIT ==="
+          HBB_COMMIT=$(git rev-parse HEAD:libs/hbb_common)
+          echo "HBB_COMMIT=$HBB_COMMIT"
+
+          echo "=== RESTORE HBB COMMON ==="
+          git clone \
+            https://github.com/rustdesk/hbb_common.git \
+            /tmp/hbb_common
+
+          git -C /tmp/hbb_common checkout "$HBB_COMMIT"
+
+          mkdir -p "$ROOT/libs/hbb_common"
+          cp -a /tmp/hbb_common/. "$ROOT/libs/hbb_common/"
+
+          echo "=== VERIFY ==="
+          test -f "$ROOT/libs/hbb_common/Cargo.toml"
+          echo "OK: hbb_common/Cargo.toml"
+          echo "COMMIT: $HBB_COMMIT"
+
       # KIEM TRA SUBMODULE VA BRIDGE
       - name: Check RustDesk submodule content
         shell: bash
