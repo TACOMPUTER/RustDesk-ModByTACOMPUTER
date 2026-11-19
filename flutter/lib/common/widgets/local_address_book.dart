@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../common.dart';
+import '../remote_hostname.dart';
 
 class LocalAddressBook extends StatefulWidget {
   const LocalAddressBook({Key? key}) : super(key: key);
@@ -86,11 +87,18 @@ class _LocalAddressBookState extends State<LocalAddressBook> {
     final password = TextEditingController(text: entry?.password ?? '');
     final result = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
       title: Text(entry == null ? 'Add device' : 'Edit device'),
-      content: SizedBox(width: 420, child: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextField(controller: name, decoration: const InputDecoration(labelText: 'Computer name / Label')),
-        TextField(controller: address, decoration: const InputDecoration(labelText: 'RustDesk ID / IP / Hostname')),
-        TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Password (optional; session only)')),
-      ])),
+      content: SizedBox(
+        width: 420,
+        child: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            TextField(controller: name, decoration: const InputDecoration(labelText: 'Computer name / Label', border: OutlineInputBorder(), isDense: true)),
+            const SizedBox(height: 18),
+            TextField(controller: address, decoration: const InputDecoration(labelText: 'RustDesk ID / IP:Port / Hostname:Port', border: OutlineInputBorder(), isDense: true)),
+            const SizedBox(height: 18),
+            TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Password (optional; session only)', border: OutlineInputBorder(), isDense: true)),
+          ]),
+        ),
+      ),
       actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
         ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save'))],
     ));
@@ -111,18 +119,7 @@ class _LocalAddressBookState extends State<LocalAddressBook> {
 
   Future<void> _connect(_LocalAddressBookEntry entry) async {
     var target = entry.address.trim();
-    // Preserve RustDesk IDs; resolve hostnames to an address for Direct IP.
-    final numericId = RegExp(r'^[0-9]{6,}$').hasMatch(target);
-    if (!numericId && InternetAddress.tryParse(target) == null) {
-      // Try DNS/hosts lookup for machine names and FQDNs. If lookup fails,
-      // fall back to the original value as a possible custom RustDesk ID.
-      try {
-        final addresses = await InternetAddress.lookup(target);
-        if (addresses.isNotEmpty) target = addresses.first.address;
-      } catch (_) {
-        // Keep target unchanged; RustDesk will handle it as an ID.
-      }
-    }
+    target = await resolveRemoteHostname(target);
     if (!mounted) return;
     connect(context, target, password: entry.password.isEmpty ? null : entry.password);
   }
