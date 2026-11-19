@@ -39,19 +39,52 @@ class _LocalAddressBookState extends State<LocalAddressBook> {
   }
 
   Future<File> _bookFile() async {
-    // Prefer the portable app folder; fall back to per-user support storage
-    // when an installed location (for example /usr/lib or Program Files) is read-only.
-    final executableDir = File(Platform.resolvedExecutable).parent;
-    final portableFile = File('${executableDir.path}${Platform.pathSeparator}Address_Book.txt');
+    // Use a predictable per-user location on both Windows and Linux.
+    final support = await getApplicationSupportDirectory();
+    final folder = Directory('${support.path}${Platform.pathSeparator}TACOMPUTER_RustDesk');
+    await folder.create(recursive: true);
+    final destination = File('${folder.path}${Platform.pathSeparator}Address_Book.txt');
+
+    // Migrate a previous portable address book only if the new file is absent.
+    // Never overwrite an existing address book.
+    if (!await destination.exists()) {
+      final executableDir = File(Platform.resolvedExecutable).parent;
+      final legacy = File('${executableDir.path}${Platform.pathSeparator}Address_Book.txt');
+      if (await legacy.exists()) {
+        final oldText = await legacy.readAsString();
+        try {
+          final oldData = jsonDecode(oldText);
+          if (oldData is Map && oldData['devices'] is List) {
+            await destination.writeAsString(oldText, flush: true);
+          }
+        } catch (e) {
+          debugPrint('Local Address Book migration skipped: $e');
+        }
+      }
+    }
+    return destination;
+  }
+
+  Future<void> _showBookPath() async {
     try {
-      await portableFile.parent.create(recursive: true);
-      await portableFile.writeAsString(await portableFile.exists() ? await portableFile.readAsString() : '');
-      return portableFile;
-    } catch (_) {
-      final dir = await getApplicationSupportDirectory();
-      final appDir = Directory('${dir.path}${Platform.pathSeparator}TACOMPUTER_RustDesk');
-      if (!await appDir.exists()) await appDir.create(recursive: true);
-      return File('${appDir.path}${Platform.pathSeparator}Address_Book.txt');
+      final file = _file ?? await _bookFile();
+      if (!mounted) return;
+      await showDialog<void>(context: context, builder: (ctx) => AlertDialog(
+        title: const Text('Local Address Book file'),
+        content: SelectableText(file.path),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+      ));
+    } catch (e) {
+      _showBookError(e);
+    }
+  }
+
+  void _showBookError(Object error) {
+    debugPrint('Local Address Book error: $error');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Address Book file error: $error')),
+      );
     }
   }
 
@@ -68,7 +101,7 @@ class _LocalAddressBookState extends State<LocalAddressBook> {
         }
       }
     } catch (e) {
-      debugPrint('Local Address Book load failed: $e');
+      _showBookError(e);
     }
     if (mounted) setState(() => _loading = false);
   }
@@ -78,7 +111,7 @@ class _LocalAddressBookState extends State<LocalAddressBook> {
     await _file!.writeAsString(const JsonEncoder.withIndent('  ').convert({
       'version': 1,
       'devices': _entries.map((e) => e.toJson()).toList(),
-    }));
+    }), flush: true);
   }
 
   Future<void> _edit([_LocalAddressBookEntry? entry]) async {
@@ -112,7 +145,11 @@ class _LocalAddressBookState extends State<LocalAddressBook> {
           entry.password = password.text;
         }
       });
-      await _save();
+      try {
+        await _save();
+      } catch (e) {
+        _showBookError(e);
+      }
     }
     name.dispose(); address.dispose(); password.dispose();
   }
@@ -132,6 +169,7 @@ class _LocalAddressBookState extends State<LocalAddressBook> {
       Padding(padding: const EdgeInsets.fromLTRB(8, 0, 8, 8), child: Row(children: [
         Expanded(child: TextField(controller: _search, onChanged: (_) => setState(() {}),
           decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search name, ID, IP or hostname', isDense: true))),
+        IconButton(tooltip: 'Address Book file location', onPressed: _showBookPath, icon: const Icon(Icons.folder_open)),
         IconButton(tooltip: 'Add device', onPressed: () => _edit(), icon: const Icon(Icons.add)),
       ])),
       Expanded(child: _loading ? const Center(child: CircularProgressIndicator()) : visible.isEmpty
@@ -146,7 +184,7 @@ class _LocalAddressBookState extends State<LocalAddressBook> {
                 TextButton(onPressed: () => _connect(e), child: const Text('Connect')),
                 PopupMenuButton<String>(onSelected: (v) async {
                   if (v == 'edit') await _edit(e);
-                  if (v == 'delete') { setState(() => _entries.remove(e)); await _save(); }
+                  if (v == 'delete') { setState(() => _entries.remove(e)); try { await _save(); } catch (err) { _showBookError(err); } }
                 }, itemBuilder: (_) => const [PopupMenuItem(value: 'edit', child: Text('Edit')),
                   PopupMenuItem(value: 'delete', child: Text('Delete'))]),
               ]));
